@@ -1,5 +1,6 @@
 import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { Link } from 'expo-router';
+import { StyleSheet } from 'react-native';
 
 import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
@@ -17,38 +18,41 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
+        <ThemedText type="title">ذاكرة الحاضر - لوحة مقدم الرعاية</ThemedText>
         <HelloWave />
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
+
+      <ThemedView style={styles.sectionContainer}>
+        <ThemedText type="subtitle">معالج إعداد الجلسة</ThemedText>
         <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
+          ابدأ جلسة جديدة عبر خطوات مبسطة: اختر نوع الذكريات، مدة الجلسة، وفعّل خيارات الواقع الافتراضي أو التدليك الذكي.
         </ThemedText>
+        <Link href="/(tabs)/explore" style={styles.actionButton}>
+          <ThemedText type="link">بدء معالج الإعداد</ThemedText>
+        </Link>
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 2: Explore</ThemedText>
+
+      <ThemedView style={styles.sectionContainer}>
+        <ThemedText type="subtitle">إدارة مكتبة الذكريات</ThemedText>
         <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
+          أضف، رتب، أو احذف الذكريات (صور، فيديو، صوت) بسهولة عبر واجهة سحب وإفلات.
         </ThemedText>
+        {/* زر إدارة الذكريات (للتطوير لاحقاً) */}
       </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
+
+      <ThemedView style={styles.sectionContainer}>
+        <ThemedText type="subtitle">لوحة تتبع التقدم</ThemedText>
         <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
+          راقب تفاعل المريض، المزاج، وعدد الذكريات المسترجعة عبر رسوم بيانية وإحصائيات.
+        </ThemedText>
+        {/* مكان للرسوم البيانية لاحقاً */}
+      </ThemedView>
+
+      <ThemedView style={styles.sectionContainer}>
+        <ThemedText type="subtitle">ميزات إضافية</ThemedText>
+        <ThemedText>
+          - إشعارات ذكية وتذكيرات للجلسات<br />
+          - بحث وتصنيف متقدم للذكريات
         </ThemedText>
       </ThemedView>
     </ParallaxScrollView>
@@ -60,10 +64,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: 16,
   },
-  stepContainer: {
+  sectionContainer: {
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 12,
+    padding: 12,
   },
   reactLogo: {
     height: 178,
@@ -71,5 +79,13 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     position: 'absolute',
+  },
+  actionButton: {
+    marginTop: 10,
+    alignSelf: 'flex-start',
+    backgroundColor: '#0a7ea4',
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 18,
   },
 });

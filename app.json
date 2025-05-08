@@ -37,6 +37,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "router": {
+      "extraRoutes": [
+        "/scr/session-wizard"
+      ]
     }
   }
 }
