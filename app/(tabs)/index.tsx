@@ -1,6 +1,5 @@
 import { Image } from 'expo-image';
-import { Link } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 
 import { HelloWave } from '@/components/HelloWave';
 import ParallaxScrollView from '@/components/ParallaxScrollView';
@@ -18,7 +17,9 @@ export default function HomeScreen() {
         />
       }>
       <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">ذاكرة الحاضر - لوحة مقدم الرعاية</ThemedText>
+        <ThemedText type="title" style={styles.accessibleTitle}>
+          ذاكرة الحاضر - لوحة مقدم الرعاية
+        </ThemedText>
         <HelloWave />
       </ThemedView>
 
@@ -27,9 +28,14 @@ export default function HomeScreen() {
         <ThemedText>
           ابدأ جلسة جديدة عبر خطوات مبسطة: اختر نوع الذكريات، مدة الجلسة، وفعّل خيارات الواقع الافتراضي أو التدليك الذكي.
         </ThemedText>
-        <Link href="/(tabs)/explore" style={styles.actionButton}>
-          <ThemedText type="link">بدء معالج الإعداد</ThemedText>
-        </Link>
+        <TouchableOpacity
+          style={styles.largeButton}
+          onPress={async () => {
+            // Placeholder for audio instruction
+            console.log('Audio instruction: بدء معالج الإعداد');
+          }}>
+          <Text style={styles.buttonText}>بدء معالج الإعداد</Text>
+        </TouchableOpacity>
       </ThemedView>
 
       <ThemedView style={styles.sectionContainer}>
@@ -65,6 +71,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginBottom: 16,
+  },
+  accessibleTitle: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginVertical: 16,
+  },
+  largeButton: {
+    backgroundColor: '#0a7ea4',
+    borderRadius: 12,
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    marginVertical: 12,
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: 20,
+    color: '#fff',
+    fontWeight: 'bold',
   },
   sectionContainer: {
     gap: 8,
