@@ -57,8 +57,7 @@ export default function HomeScreen() {
       <ThemedView style={styles.sectionContainer}>
         <ThemedText type="subtitle">ميزات إضافية</ThemedText>
         <ThemedText>
-          - إشعارات ذكية وتذكيرات للجلسات<br />
-          - بحث وتصنيف متقدم للذكريات
+          - إشعارات ذكية وتذكيرات للجلسات{'\n'}- بحث وتصنيف متقدم للذكريات
         </ThemedText>
       </ThemedView>
     </ParallaxScrollView>
