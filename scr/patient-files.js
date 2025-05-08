@@ -1,7 +1,8 @@
 import { ThemedView } from '@/components/ThemedView';
 import { Ionicons } from '@expo/vector-icons';
+import * as DocumentPicker from 'expo-document-picker';
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
@@ -63,6 +64,61 @@ export default function PatientFiles() {
   const [notes, setNotes] = useState(patient.notes);
   const [aiResult, setAiResult] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState(null);
+  const [userInput, setUserInput] = useState('');
+  const [pickedFile, setPickedFile] = useState(null);
+
+  // اختيار ملف
+  const pickFile = async () => {
+    const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+    if (res.type === 'success') setPickedFile(res);
+  };
+
+  // استدعاء Gemini مع نص أو ملف
+  async function handleGeminiAction(type, inputText, file) {
+    setLoadingAI(true);
+    setAiResult('');
+    let prompt = '';
+    if (type === 'memory') prompt = 'اقترح ذكرى إيجابية يمكن إضافتها لمريض الزهايمر بناءً على اهتماماته.';
+    if (type === 'plan') prompt = 'اقترح خطة جلسة علاجية لمريض الزهايمر مع أنشطة محفزة.';
+    if (type === 'report') prompt = 'لخص تفاعل المريض في الجلسات الأخيرة واقترح توصيات.';
+    // تخصيص البرومبت بالنص المدخل
+    if (inputText) prompt += `\nملاحظة إضافية من المستخدم: ${inputText}`;
+    // إذا كان هناك ملف، أضف اسمه للبرومبت (للتوضيح فقط)
+    if (file) prompt += `\nتم إرفاق ملف: ${file.name}`;
+    try {
+      const res = await fetch(`${GEMINI_API_URL}?key=${GEMINI_API_KEY}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        }),
+      });
+      const data = await res.json();
+      setAiResult(
+        data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() ||
+        'لم يتم الحصول على رد من الذكاء الاصطناعي.'
+      );
+    } catch (e) {
+      setAiResult('حدث خطأ في الاتصال بالذكاء الاصطناعي.');
+    }
+    setLoadingAI(false);
+  }
+
+  // عند الضغط على زر سريع: أظهر المودال وحدد النوع
+  const openQuickModal = (type) => {
+    setModalType(type);
+    setUserInput('');
+    setPickedFile(null);
+    setModalVisible(true);
+  };
+
+  // عند تأكيد الإدخال في المودال
+  const handleModalSubmit = () => {
+    setModalVisible(false);
+    handleGeminiAction(modalType, userInput, pickedFile);
+  };
 
   // دالة عامة لاستدعاء Gemini API
   async function handleGeminiAction(type) {
@@ -286,26 +342,69 @@ export default function PatientFiles() {
 
         {/* أزرار سريعة */}
         <View style={styles.quickActions}>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => handleGeminiAction('memory')}>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => openQuickModal('memory')}>
             <Ionicons name="images" size={28} color="#1976d2" />
             <Text style={styles.quickBtnText}>إضافة ذكريات</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => handleGeminiAction('plan')}>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => openQuickModal('plan')}>
             <Ionicons name="calendar" size={28} color="#1976d2" />
             <Text style={styles.quickBtnText}>تخطيط جلسة</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => handleGeminiAction('report')}>
+          <TouchableOpacity style={styles.quickBtn} onPress={() => openQuickModal('report')}>
             <Ionicons name="document-text" size={28} color="#1976d2" />
             <Text style={styles.quickBtnText}>مراجعة تقارير</Text>
           </TouchableOpacity>
         </View>
+        {/* Modal لإدخال نص أو ملف */}
+        <Modal
+          visible={modalVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={{ fontWeight: 'bold', fontSize: 17, marginBottom: 8 }}>
+                {modalType === 'memory' && 'إضافة ذكرى'}
+                {modalType === 'plan' && 'تخطيط جلسة'}
+                {modalType === 'report' && 'مراجعة تقارير'}
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل نصاً إضافياً (اختياري)"
+                value={userInput}
+                onChangeText={setUserInput}
+                multiline
+              />
+              <TouchableOpacity style={styles.fileBtn} onPress={pickFile}>
+                <Ionicons name="attach" size={20} color="#1976d2" />
+                <Text style={{ color: '#1976d2', marginLeft: 6 }}>
+                  {pickedFile ? pickedFile.name : 'إرفاق ملف (اختياري)'}
+                </Text>
+              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16 }}>
+                <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.cancelBtn}>
+                  <Text style={{ color: '#1976d2' }}>إلغاء</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleModalSubmit} style={styles.submitBtn}>
+                  <Text style={{ color: '#fff' }}>إرسال</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
         {/* عرض نتيجة الذكاء الاصطناعي */}
         {(loadingAI || aiResult) && (
           <View style={styles.aiResultBox}>
-            {loadingAI
-              ? <Text style={{ color: '#1976d2' }}>جاري معالجة الطلب...</Text>
-              : <Text style={{ color: '#333', fontSize: 15 }}>{aiResult}</Text>
-            }
+            {loadingAI ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                <Ionicons name="sparkles" size={20} color="#1976d2" style={{ marginLeft: 8 }} />
+                <Text style={{ color: '#1976d2' }}>الذكاء الاصطناعي يكتب الآن...</Text>
+                <ActivityIndicator color="#1976d2" size="small" style={{ marginLeft: 8 }} />
+              </View>
+            ) : (
+              <Text style={{ color: '#333', fontSize: 15 }}>{aiResult}</Text>
+            )}
           </View>
         )}
         {/* التقارير */}
@@ -325,7 +424,8 @@ export default function PatientFiles() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 8,
+    paddingHorizontal: 6,
+    paddingTop: 6,
     backgroundColor: '#f7f7f7',
   },
   headerCard: {
@@ -333,8 +433,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    marginBottom: 10,
     elevation: 2,
     shadowColor: '#000',
     shadowOpacity: 0.07,
@@ -342,45 +443,45 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    marginRight: 16,
-    borderWidth: 2,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    marginRight: 10,
+    borderWidth: 1.5,
     borderColor: '#e0e0e0',
   },
   patientName: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#222',
-    marginBottom: 4,
+    marginBottom: 2,
     textAlign: 'right',
   },
   patientAge: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#666',
     textAlign: 'right',
   },
   trendContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    marginLeft: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    marginLeft: 4,
     alignSelf: 'flex-start',
   },
   tabsContainer: {
     flexDirection: 'row',
     backgroundColor: '#fff',
-    borderRadius: 12,
-    marginBottom: 10,
+    borderRadius: 10,
+    marginBottom: 8,
     overflow: 'hidden',
   },
   tabBtn: {
     flex: 1,
-    paddingVertical: 14,
+    paddingVertical: 10,
     alignItems: 'center',
     backgroundColor: '#eee',
   },
@@ -388,7 +489,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#1976d2',
   },
   tabText: {
-    fontSize: 16,
+    fontSize: 13,
     color: '#555',
     fontWeight: 'bold',
   },
@@ -397,153 +498,157 @@ const styles = StyleSheet.create({
   },
   section: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginVertical: 8,
+    borderRadius: 10,
+    padding: 10,
+    marginVertical: 6,
     elevation: 1,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#1976d2',
-    marginBottom: 8,
+    marginBottom: 6,
     textAlign: 'right',
   },
   editBtn: {
     alignSelf: 'flex-end',
     backgroundColor: '#e3f2fd',
     borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    marginTop: 6,
   },
   editBtnText: {
     color: '#1976d2',
     fontWeight: 'bold',
-    fontSize: 15,
+    fontSize: 13,
   },
   addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
     backgroundColor: '#1976d2',
     alignItems: 'center',
     justifyContent: 'center',
-    marginLeft: 8,
-    marginTop: 8,
+    marginLeft: 6,
+    marginTop: 6,
   },
   addBtnText: {
     color: '#fff',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   timelineContainer: {
     backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 14,
-    marginVertical: 8,
+    borderRadius: 10,
+    padding: 10,
+    marginVertical: 6,
   },
   timeline: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginTop: 8,
+    marginTop: 6,
   },
   timelineItem: {
     alignItems: 'center',
-    marginHorizontal: 12,
-    minWidth: 70,
+    marginHorizontal: 8,
+    minWidth: 55,
   },
   timelineDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: '#1976d2',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   timelineYear: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#1976d2',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   timelineEvent: {
-    fontSize: 13,
+    fontSize: 10,
     color: '#444',
     textAlign: 'center',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   timelineLine: {
-    width: 40,
+    width: 28,
     height: 2,
     backgroundColor: '#1976d2',
     position: 'absolute',
-    top: 6,
-    left: 35,
+    top: 4,
+    left: 22,
   },
   familyList: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 6,
     flexWrap: 'wrap',
   },
   familyItem: {
     alignItems: 'center',
-    marginRight: 16,
-    marginBottom: 8,
+    marginRight: 10,
+    marginBottom: 6,
+    width: 60,
   },
   familyImg: {
-    width: 54,
-    height: 54,
-    borderRadius: 27,
-    borderWidth: 2,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    borderWidth: 1.5,
     borderColor: '#e0e0e0',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   familyName: {
-    fontSize: 14,
+    fontSize: 11,
     fontWeight: 'bold',
     color: '#333',
+    textAlign: 'center',
   },
   familyRelation: {
-    fontSize: 12,
+    fontSize: 10,
     color: '#888',
+    textAlign: 'center',
   },
   sessionItem: {
-    marginBottom: 8,
-    padding: 8,
+    marginBottom: 6,
+    padding: 6,
     backgroundColor: '#f1f8e9',
     borderRadius: 8,
   },
   sessionDate: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#1976d2',
     fontWeight: 'bold',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   quickActions: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    marginVertical: 12,
+    marginVertical: 8,
   },
   quickBtn: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#e3f2fd',
     borderRadius: 10,
-    padding: 12,
-    width: 100,
+    padding: 8,
+    width: 85,
   },
   quickBtnText: {
     color: '#1976d2',
-    fontSize: 14,
-    marginTop: 4,
+    fontSize: 12,
+    marginTop: 2,
+    textAlign: 'center',
   },
   aiResultBox: {
     backgroundColor: '#f1f8e9',
     borderRadius: 10,
-    padding: 12,
-    marginVertical: 8,
-    minHeight: 40,
+    padding: 10,
+    marginVertical: 6,
+    minHeight: 36,
     justifyContent: 'center',
   },
   exportBtn: {
@@ -552,12 +657,54 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#1976d2',
     borderRadius: 8,
-    padding: 10,
-    marginTop: 8,
+    padding: 8,
+    marginTop: 6,
   },
   exportBtnText: {
     color: '#fff',
-    fontSize: 15,
-    marginLeft: 6,
+    fontSize: 13,
+    marginLeft: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 16,
+    width: '92%',
+    elevation: 4,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 8,
+    minHeight: 36,
+    marginBottom: 8,
+    textAlign: 'right',
+    fontSize: 13,
+  },
+  fileBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#e3f2fd',
+    borderRadius: 8,
+    padding: 8,
+    marginBottom: 4,
+  },
+  cancelBtn: {
+    padding: 8,
+    marginRight: 6,
+  },
+  submitBtn: {
+    backgroundColor: '#1976d2',
+    borderRadius: 8,
+    padding: 8,
+    minWidth: 50,
+    alignItems: 'center',
   },
 });
