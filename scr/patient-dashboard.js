@@ -783,7 +783,7 @@ const styles = StyleSheet.create({
   },
   sosButton: {
     position: 'absolute',
-    bottom: 24,
+    bottom: 48,
     left: 24,
     elevation: 6,
     zIndex: 100,
